@@ -29,10 +29,11 @@ namespace OceanLib.Structs
         [Range(1f, 400f)]
         public float specularExponent;
         public bool regenerateDirs;
+        
     }
 
     [Serializable]
-    public struct Lighting {
+    public struct LightingParams {
         public GameObject lightSource;
         public Color ambientColor;
         [Range(0f, 1f)]

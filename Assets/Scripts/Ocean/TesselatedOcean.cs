@@ -3,14 +3,14 @@ using OceanLib.Structs;
 public class TesselatedOcean : MonoBehaviour
 {
 
-    public TessellationParams tesselation = new TessellationParams {
+    public TessellationParams tesselationParams = new TessellationParams {
         minTessellationDistance = 100f,
         maxTessellationDistance = 600f,
         minTessellation = 1f,
         maxTessellation = 100f
     };
 
-    public OceanParams ocean = new OceanParams {
+    public OceanParams oceanParams = new OceanParams {
         numberOfWaves = 12,
         baseAmplitude = 0.65f,
         baseFrequency = 0.05f,
@@ -20,7 +20,7 @@ public class TesselatedOcean : MonoBehaviour
         speedGain = 0.9f,
         regenerateDirs = false,
     };
-    public Lighting lighting = new Lighting {
+    public LightingParams lightingParams = new LightingParams {
         ambientColor = new Color(0.125f, 0.125f, 0.41f), // dark blue
         ambientGain = 0.1f,
         diffuseColor = new Color(0.03f, 0.03f, 0.06f), // black-blue
@@ -36,15 +36,14 @@ public class TesselatedOcean : MonoBehaviour
     private float[] k;
     private float[] c;
     private float[] d;
-
-    
-
+    private OceanParams prevOceanParams;
+    private TessellationParams prevTessParams;
+    private LightingParams prevLightParams; 
 
     private Material mat;
     private Vector3 lightVector = new Vector3(0.0f, -1.0f, 0.0f);  
 
-    void Start()
-    {
+    void Start() {
         mat = GetComponent<Renderer>().material;
         mat.SetVector("_L", lightVector);
 
@@ -52,16 +51,16 @@ public class TesselatedOcean : MonoBehaviour
         k = new float[128];
         c = new float[128];
         d = new float[128];
-        for (int i = 0; i < ocean.numberOfWaves; i++){
+        for (int i = 0; i < oceanParams.numberOfWaves; i++){
             if (i == 0){
-                a[i] = ocean.baseAmplitude;
-                k[i] = ocean.baseFrequency;
-                c[i] = ocean.baseSpeed;
+                a[i] = oceanParams.baseAmplitude;
+                k[i] = oceanParams.baseFrequency;
+                c[i] = oceanParams.baseSpeed;
             }
-            else if (i < ocean.numberOfWaves){
-                k[i] = k[i-1]*(1+ocean.frequencyGain);
-                a[i] = a[i-1]*(1-ocean.amplitudeFalloff);
-                c[i] = c[i-1]*(1+ocean.speedGain);
+            else if (i < oceanParams.numberOfWaves){
+                k[i] = k[i-1]*(1+oceanParams.frequencyGain);
+                a[i] = a[i-1]*(1-oceanParams.amplitudeFalloff);
+                c[i] = c[i-1]*(1+oceanParams.speedGain);
             }
             else {
                 k[i] = 0f;
@@ -70,42 +69,57 @@ public class TesselatedOcean : MonoBehaviour
 
             d[i] = Random.Range(0f, 2f*pi);
         }
+        prevTessParams = tesselationParams;
+        prevOceanParams = oceanParams;
+        prevLightParams = lightingParams;
     }
 
-    void Update()
-    {
-        for (int i = 0; i < ocean.numberOfWaves; i++){
-            if (i == 0){
-                a[i] = ocean.baseAmplitude;
-                k[i] = ocean.baseFrequency;
-                c[i] = ocean.baseSpeed;
+
+    void Update() {
+        if (!oceanParams.Equals(prevOceanParams)){
+            for (int i = 0; i < oceanParams.numberOfWaves; i++){
+                if (i == 0){
+                    a[i] = oceanParams.baseAmplitude;
+                    k[i] = oceanParams.baseFrequency;
+                    c[i] = oceanParams.baseSpeed;
+                }
+                else if (i < oceanParams.numberOfWaves){
+                    k[i] = k[i-1]*(1+oceanParams.frequencyGain);
+                    a[i] = a[i-1]*(1-oceanParams.amplitudeFalloff);
+                    c[i] = c[i-1]*(1+oceanParams.speedGain);
+                }
+                else {
+                    k[i] = 0f;
+                    a[i] = 0f;
+                }
+                if (oceanParams.regenerateDirs){
+                    d[i] = Random.Range(0f, 2f*pi);
+                    oceanParams.regenerateDirs = false;
+                }
             }
-            else if (i < ocean.numberOfWaves){
-                k[i] = k[i-1]*(1+ocean.frequencyGain);
-                a[i] = a[i-1]*(1-ocean.amplitudeFalloff);
-                c[i] = c[i-1]*(1+ocean.speedGain);
-            }
-            else {
-                k[i] = 0f;
-                a[i] = 0f;
-            }
-            if (ocean.regenerateDirs){
-                d[i] = Random.Range(0f, 2f*pi);
-                ocean.regenerateDirs = false;
-            }
+            mat.SetInt("_NumWaves", oceanParams.numberOfWaves);
+            mat.SetFloatArray("_A", a);
+            mat.SetFloatArray("_D", d);
+            mat.SetFloatArray("_K", k);
+            mat.SetFloatArray("_C", c);
         }
-        lightVector = lighting.lightSource.transform.TransformDirection(Vector3.forward);
-        mat.SetVector("_L", lightVector);
-        mat.SetVector("_DiffuseColor", lighting.diffuseColor);
-        mat.SetVector("_SpecularColor", lighting.specularColor);
-        mat.SetVector("_AmbientColor", lighting.ambientColor);
-        mat.SetInt("_NumWaves", ocean.numberOfWaves);
-        mat.SetFloatArray("_A", a);
-        mat.SetFloatArray("_D", d);
-        mat.SetFloatArray("_K", k);
-        mat.SetFloatArray("_C", c);
-        mat.SetFloat("_SpecularExponent", lighting.specularExponent);
-        mat.SetFloat("_SpecularGain", lighting.specularGain);
-        mat.SetFloat("_AmbientGain",lighting. ambientGain);
+
+        if (!lightingParams.Equals(prevLightParams)) {
+            lightVector = lightingParams.lightSource.transform.TransformDirection(Vector3.forward);
+            mat.SetVector("_L", lightVector);
+            mat.SetVector("_DiffuseColor", lightingParams.diffuseColor);
+            mat.SetVector("_SpecularColor", lightingParams.specularColor);
+            mat.SetVector("_AmbientColor", lightingParams.ambientColor);
+            mat.SetFloat("_SpecularExponent", lightingParams.specularExponent);
+            mat.SetFloat("_SpecularGain", lightingParams.specularGain);
+            mat.SetFloat("_AmbientGain", lightingParams.ambientGain);
+        }
+
+        if (!tesselationParams.Equals(prevTessParams)) {
+            mat.SetFloat("_MinTessDist", tesselationParams.minTessellationDistance);
+            mat.SetFloat("_MaxTessDist", tesselationParams.maxTessellationDistance);
+            mat.SetFloat("_MinTess", tesselationParams.minTessellation);
+            mat.SetFloat("_MaxTess", tesselationParams.maxTessellation);
+        }
     }
 }

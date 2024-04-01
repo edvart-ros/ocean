@@ -1,62 +1,48 @@
-Shader "Custom/Ocean"
+Shader "Custom/OceanTesselate"
 {
     Properties
     {
+        _MaxTessDist ("Max tessellation distance", Float) = 100.0
+        _MinTessDist ("Minimum tessellation distance", Float) = 1.0
+        _MaxTess ("Max tessellation factor", Float) = 20.0
+        _MinTess ("Minimum tessellation factor", Float) = 1.0
+        _DistFactor ("Distance-based factor for tessellation", Float) = 1.0
+        _TessOffset ("Tessellation distance offset", Float) = 5.0
     }
     SubShader
     {
         Tags { "RenderType"="Opaque" }
         LOD 100
-
+        
         Pass
         {
             CGPROGRAM
+            #pragma target 5.0
             #pragma vertex vert
+            #pragma hull hull
+            #pragma domain domain
             #pragma fragment frag
-            // make fog work
             #pragma multi_compile_fog
-
+            
             #include "UnityCG.cginc"
-
-            #define PI 3.14159265
-
-            struct appdata
-            {
-                float4 vertex : POSITION;
-                float2 uv : TEXCOORD0;
+            struct TessellationFactors {
+                float edge[3] : SV_TessFactor;
+                float inside : SV_InsideTessFactor;
             };
             
-            struct v2f
-            {
-                float2 uv : TEXCOORD0;
-                UNITY_FOG_COORDS(1)
+            struct Interpolators {
                 float4 pos : SV_POSITION;
-                float3 normal : TEXCOORD2;
                 float3 normalWS : TEXCOORD3;
                 float3 posWS : TEXCOORD4;
             };
 
-            
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
-            float4 _DiffuseColor;
-            float4 _AmbientColor;
-            float _AmbientGain;
-            float4 _SpecularColor;
-            float _SpecularExponent;
-            float _SpecularGain;
-            float3 _L;
-            float _A[128];
-            float _D[128];
-            float _K[129];
-            float _C[128];
-            int _NumWaves;
-            int _Debug;
-            
-            float4 f4(const float3 f){
-                return float4(f, 1.0);
-            }
+            struct TessellationControlPoint {
+                float3 posWS : INTERNALTESSPOS; // only really need the vertex positions
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
 
+            #include <TesselateInc.hlsl> // all the interpolation code is in here
+            
             float clampDot(const float3 u, const float3 v){
                 return clamp(dot(u, v), 0.0, 1.0);
             }
@@ -69,39 +55,49 @@ Shader "Custom/Ocean"
                 return float3(h, dh_dx, dh_dz);
             }
 
+            float4 _DiffuseColor;
+            float4 _AmbientColor;
+            float _AmbientGain;
+            float4 _SpecularColor;
+            float _SpecularExponent;
+            float _SpecularGain;
+            float3 _L;
+            float _A[128];
+            float _D[128];
+            float _K[129];
+            float _C[128];
+            int _NumWaves;
+            
+            [domain("tri")]
+            Interpolators domain(TessellationFactors factors, OutputPatch<TessellationControlPoint, 3> patch, float3 barycentricCoordinates : SV_DomainLocation) {
+                Interpolators o;
+                 // boilerplate
+                UNITY_SETUP_INSTANCE_ID(patch[0]);
+                UNITY_TRANSFER_INSTANCE_ID(patch[0], o);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 
-            v2f vert (appdata v)
-            {
-                v2f o;
-                float2 D;
-                
-                float4 vert = v.vertex;
                 const float t = _Time.y;
-                float3 wave_vec; // (h, dh_dx, dh_dz)
-                float3 wave_vec_sum = float3(0, 0, 0);
+                float3 wave_vec, wave_vec_sum; // (h, dh_dx, dh_dz)
+                float2 D;
+                float3 p = BARYCENTRIC_INTERPOLATE(posWS);
 
                 for (int i = 0; i < _NumWaves; i++){
                     D = normalize(float2(cos(_D[i]), sin(_D[i])));
-                    wave_vec = wave(_A[i], D, _K[i], _C[i], vert.xz + wave_vec.yz, t);
+                    wave_vec = wave(_A[i], D, _K[i], _C[i], p.xz + wave_vec.yz, t);
                     wave_vec_sum += wave_vec;
                 }
-
                 const float3 T = float3(1.0, wave_vec_sum[1], 0.0);
                 const float3 B = float3(0.0, wave_vec_sum[2], 1.0);
                 const float3 n = normalize(cross(B, T));
-                vert.y = wave_vec_sum[0];
+                p.y += wave_vec_sum[0];
 
-                o.pos = UnityObjectToClipPos(vert);
-                o.posWS = mul(unity_ObjectToWorld, float4(vert));
-                o.normal = n;
-                o.normalWS = UnityObjectToWorldNormal(n);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-                UNITY_TRANSFER_FOG(o,o.pos);
+                o.posWS = p;
+                o.pos = UnityWorldToClipPos(p);
+                o.normalWS = n;
                 return o;
             }
 
-            fixed4 frag (v2f i) : SV_Target
-            {
+            fixed4 frag(Interpolators i) : SV_Target {
                 const float3 lightDirWS = normalize(-_L);
                 
                 //diffuse
@@ -121,9 +117,9 @@ Shader "Custom/Ocean"
                 
                 float4 col = float4(fresnel*reflectCol, 1) + _DiffuseColor*diffuse + fresnel*specular*_SpecularColor + _AmbientColor*_AmbientGain;
                 UNITY_APPLY_FOG(i.fogCoord, col);
+                return float4(i.normalWS, 1.0);
                 return col;
             }
-
             ENDCG
         }
     }

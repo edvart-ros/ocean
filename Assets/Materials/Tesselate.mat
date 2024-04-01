@@ -21,7 +21,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Tesselate
-  m_Shader: {fileID: 4800000, guid: 436780b890efdb046bfd4198f70357a5, type: 3}
+  m_Shader: {fileID: 4800000, guid: e6780b680f6a2ca4d88d3fe2df9d936f, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -113,12 +113,12 @@ Material:
     - _GlossMapScale: 0
     - _Glossiness: 0
     - _GlossyReflections: 0
-    - _MaxTess: 30
-    - _MaxTessDist: 200
+    - _MaxTess: 100
+    - _MaxTessDist: 500
     - _MaxTessFactor: 10
     - _Metallic: 0
     - _MinTess: 1
-    - _MinTessDist: 10
+    - _MinTessDist: 20
     - _MinTessFactor: 1
     - _OcclusionStrength: 1
     - _Parallax: 0.005

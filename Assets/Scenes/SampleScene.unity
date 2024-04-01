@@ -297,10 +297,10 @@ MonoBehaviour:
   numberOfWaves: 12
   baseAmplitude: 0.65
   baseFrequency: 0.05
-  baseSpeed: 2.3399491
+  baseSpeed: 6.28
   amplitudeFalloff: 0.32217386
   frequencyGain: 0.21346861
-  speedGain: 0.18
+  speedGain: 0.999
   specularExponent: 11
   regenerateDirs: 0
   ambientColor: {r: 0.124698326, g: 0.124698326, b: 0.408805, a: 1}
@@ -566,6 +566,7 @@ GameObject:
   - component: {fileID: 1298443696}
   - component: {fileID: 1298443695}
   - component: {fileID: 1298443698}
+  - component: {fileID: 1298443699}
   m_Layer: 0
   m_Name: GridMesh
   m_TagString: Untagged
@@ -650,8 +651,44 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c0ffbf9c3e597e4b9cf8b76ea3bc535, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  size: 100
-  resolution: 100
+  size: 2000
+  resolution: 10
+--- !u!114 &1298443699
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1298443693}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 558ce45fb829d7d4a8a1b7ddb1622c5c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  tesselationParams:
+    minTessellationDistance: 100
+    maxTessellationDistance: 600
+    minTessellation: 1
+    maxTessellation: 100
+  oceanParams:
+    numberOfWaves: 12
+    baseAmplitude: 0.65
+    baseFrequency: 0.05
+    baseSpeed: 1.81
+    amplitudeFalloff: 0.32
+    frequencyGain: 0.21
+    speedGain: 0.9
+    specularExponent: 0
+    regenerateDirs: 0
+  lightingParams:
+    lightSource: {fileID: 410087039}
+    ambientColor: {r: 0.125, g: 0.125, b: 0.41, a: 1}
+    ambientGain: 0.1
+    specularGain: 1
+    specularExponent: 60
+    diffuseColor: {r: 0.03, g: 0.03, b: 0.06, a: 1}
+    specularColor: {r: 1, g: 1, b: 1, a: 1}
+    lightVector: {x: 0, y: -1, z: 0}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
