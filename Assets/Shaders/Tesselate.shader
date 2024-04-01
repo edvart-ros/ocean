@@ -1,13 +1,13 @@
-Shader "Unlit/Tesselation"
+Shader "Unlit/TessellatedOcean"
 {
     Properties
     {
-        _MaxTessDist ("Max tesselation distance", Float) = 100.0
-        _MinTessDist ("Minimum tesselation distance", Float) = 1.0
-        _MaxTess ("Max tesselation factor", Float) = 20.0
-        _MinTess ("Minimum tesselation factor", Float) = 1.0
-        _DistFactor ("Distance-based factor for tesselation", Float) = 1.0
-        _TessOffset ("Tesselation distance offset", Float) = 5.0
+        _MaxTessDist ("Max tessellation distance", Float) = 100.0
+        _MinTessDist ("Minimum tessellation distance", Float) = 1.0
+        _MaxTess ("Max tessellation factor", Float) = 20.0
+        _MinTess ("Minimum tessellation factor", Float) = 1.0
+        _DistFactor ("Distance-based factor for tessellation", Float) = 1.0
+        _TessOffset ("Tessellation distance offset", Float) = 5.0
     }
     SubShader
     {
@@ -26,7 +26,7 @@ Shader "Unlit/Tesselation"
 
             #include "UnityCG.cginc"
 
-            float _MinTessDist, _MaxTessDist, _MinTess, _MaxTess, _TessOffset, _DistFactor;
+            float _MinTessDist, _MaxTessDist, _MinTess, _MaxTess;
 
             // mesh data inputs to vertex shader
             struct appdata
@@ -35,12 +35,12 @@ Shader "Unlit/Tesselation"
             };
 
             // the thing the vertex shader outputs to the hull shader
-            struct TesselationControlPoint {
+            struct TessellationControlPoint {
                 float3 posWS : INTERNALTESSPOS; // only really need the vertex positions
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
-            struct TesselationFactors {
+            struct TessellationFactors {
                 float edge[3] : SV_TessFactor;
                 float inside : SV_InsideTessFactor;
             };
@@ -51,11 +51,11 @@ Shader "Unlit/Tesselation"
                 float3 posWS : TEXCOORD4;
             };
 
-            float sigmoid(float x){
-                return 1/(1+exp(-x));
-            }
-            float getTesselationFactor(const float d){
-                return (_MaxTess-_MinTess)*sigmoid(-_DistFactor*(d-_TessOffset)) + _MinTess;
+            float getTessellationFactor(const float d) {
+                const float clampedDistance = clamp(d, _MinTessDist, _MaxTessDist);
+                float normalizedDistance = (clampedDistance - _MinTessDist) / (_MaxTessDist - _MinTessDist);
+                float tessellationFactor = lerp(_MaxTess, _MinTess, normalizedDistance);
+                return tessellationFactor;
             }
 
             // helper macro for domain shader
@@ -66,9 +66,9 @@ Shader "Unlit/Tesselation"
 
 
             // runs on each vertex, outputs data to the hull shader
-            TesselationControlPoint vert (appdata v)
+            TessellationControlPoint vert (appdata v)
             {
-                TesselationControlPoint o;
+                TessellationControlPoint o;
 
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_TRANSFER_INSTANCE_ID(v, o);
@@ -81,19 +81,20 @@ Shader "Unlit/Tesselation"
             [outputcontrolpoints(3)] // Triangles have three points
             [outputtopology("triangle_cw")] // Signal we're outputting triangles
             [patchconstantfunc("PatchConstantFunction")] // Register the patch constant function
-            [partitioning("integer")]
-            TesselationControlPoint hull(
-                InputPatch<TesselationControlPoint, 3> patch, // Input triangle
+            [partitioning("fractional_odd")]
+            TessellationControlPoint hull(
+                InputPatch<TessellationControlPoint, 3> patch, // Input triangle
                 uint id : SV_OutputControlPointID) { // Vertex index on the triangle
 
                 return patch[id];
             }
             
-            TesselationFactors PatchConstantFunction(InputPatch<TesselationControlPoint, 3> patch) {
+            TessellationFactors PatchConstantFunction(InputPatch<TessellationControlPoint, 3> patch) {
                 UNITY_SETUP_INSTANCE_ID(patch[0]);
-                // calculate tesselation factors
-                TesselationFactors f;
-                float d = length(_WorldSpaceCameraPos-patch[0].posWS);
+                // calculate tessellation factors
+                TessellationFactors f;
+                const float3 p = (patch[0].posWS+patch[1].posWS+patch[2].posWS)/3.0;
+                const float d = length(p);
                 int tessFactor = 1;
                 if (d < _MinTessDist){
                     tessFactor = _MaxTess;
@@ -102,7 +103,7 @@ Shader "Unlit/Tesselation"
                     tessFactor = _MinTess;
                 }
                 else {
-                    tessFactor = getTesselationFactor(d);
+                    tessFactor = getTessellationFactor(d);
                 }
                 f.edge[0] = tessFactor;
                 f.edge[1] = tessFactor;
@@ -113,18 +114,15 @@ Shader "Unlit/Tesselation"
 
 
 
-
-            // WATER SPECIFIC STUFF HERE 
-
             [domain("tri")]
-            Interpolators domain(TesselationFactors factors, OutputPatch<TesselationControlPoint, 3> patch, float3 barycentricCoordinates : SV_DomainLocation) {
+            Interpolators domain(TessellationFactors factors, OutputPatch<TessellationControlPoint, 3> patch, float3 barycentricCoordinates : SV_DomainLocation) {
                 Interpolators o;
                 UNITY_SETUP_INSTANCE_ID(patch[0]); // boilerplate
                 UNITY_TRANSFER_INSTANCE_ID(patch[0], o);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 
-                float3 positionWS = BARYCENTRIC_INTERPOLATE(posWS);
 
+                float3 positionWS = BARYCENTRIC_INTERPOLATE(posWS);
                 o.posWS = positionWS;
                 o.pos = UnityWorldToClipPos(positionWS);
                 // also *actually* compute normals!
