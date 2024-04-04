@@ -38,7 +38,7 @@ TessellationControlPoint vert (appdata v)
 [outputcontrolpoints(3)] // Triangles have three points
 [outputtopology("triangle_cw")] // Signal we're outputting triangles
 [patchconstantfunc("PatchConstantFunction")] // Register the patch constant function
-[   ("integer")]
+[partitioning("integer")]
 TessellationControlPoint hull(
     InputPatch<TessellationControlPoint, 3> patch, // Input triangle
     uint id : SV_OutputControlPointID) { // Vertex index on the triangle
