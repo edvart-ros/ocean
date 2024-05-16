@@ -1,4 +1,5 @@
 Ocean shader in Unity for URP (Universal render pipeline). Should work in HDRP but might need changes to the skybox sampling.
+Implementation is really simple/bad. Doesnt scale well. Needs some LoD system to make this scale to vast oceans.
 
 https://github.com/edvart-ros/ocean/assets/94528774/d85a6a15-88cf-4a8a-906a-80cc9630ddf1
 
